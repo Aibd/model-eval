@@ -18,7 +18,6 @@ export function Sidebar({ isOpen, toggleSidebar, config, setConfig, onSelectMode
 
     const handleSaveConfig = (newConfig: AppConfig) => {
         setConfig(newConfig);
-        setIsSettingsOpen(false);
         fetch('/api/config', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -115,7 +114,7 @@ export function Sidebar({ isOpen, toggleSidebar, config, setConfig, onSelectMode
                                                     "h-4 w-4 transition-colors",
                                                     activeView === model.id ? "text-blue-400" : "text-slate-600 group-hover:text-blue-400"
                                                 )} />
-                                                <span className="truncate font-medium">{model.name}</span>
+                                                <span className="truncate font-medium">{model.modelId}</span>
                                             </button>
                                         ))}
                                     </div>

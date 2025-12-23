@@ -304,7 +304,7 @@ export function ChatInterface({ config, setConfig, activeView }: ChatInterfacePr
                 )}
                 <div className="flex-1 min-w-0">
                     <ModelColumn
-                        modelName={modelAConfig?.name || 'Select a Model'}
+                        modelName={modelAConfig?.modelId || 'Select a Model'}
                         messages={messagesA}
                         isLoading={isLoadingA}
                         color="blue"

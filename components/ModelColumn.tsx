@@ -97,7 +97,7 @@ export function ModelColumn({ modelName, messages, isLoading, color, isCompariso
                                                 }`}
                                             >
                                                 <span className={`font-medium ${currentModelId === model.id ? 'text-blue-600' : 'text-slate-700'}`}>
-                                                    {model.name}
+                                                    {model.modelId}
                                                 </span>
                                                 {currentModelId === model.id && (
                                                     <Check className="h-4 w-4 text-blue-600" />

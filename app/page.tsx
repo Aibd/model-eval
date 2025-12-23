@@ -99,7 +99,7 @@ export default function Home() {
               <Menu className="h-5 w-5" />
             </button>
             <h1 className="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              {activeView === 'comparison' ? 'Model Arena' : config.models?.find(m => m.id === activeView)?.name || 'Chat'}
+              {activeView === 'comparison' ? 'Model Arena' : config.models?.find(m => m.id === activeView)?.modelId || 'Chat'}
             </h1>
           </div>
 
@@ -117,7 +117,7 @@ export default function Home() {
                       <Bot className="h-4 w-4 text-blue-600" />
                     </div>
                     <span className="text-sm font-semibold text-blue-700 truncate">
-                      {config.models?.find(m => m.id === config.comparison.modelAId)?.name || '选择模型A'}
+                      {config.models?.find(m => m.id === config.comparison.modelAId)?.modelId || '选择模型A'}
                     </span>
                     <ChevronDown className="h-4 w-4 text-blue-500" />
                   </button>
@@ -158,7 +158,7 @@ export default function Home() {
                       <Bot className="h-4 w-4 text-purple-600" />
                     </div>
                     <span className="text-sm font-semibold text-purple-700 truncate">
-                      {config.models?.find(m => m.id === config.comparison.modelBId)?.name || '选择模型B'}
+                      {config.models?.find(m => m.id === config.comparison.modelBId)?.modelId || '选择模型B'}
                     </span>
                     <ChevronDown className="h-4 w-4 text-purple-500" />
                   </button>
@@ -177,7 +177,7 @@ export default function Home() {
                           }`}
                         >
                           <Bot className="h-4 w-4" />
-                          <span className="truncate">{model.name}</span>
+                          <span className="truncate">{model.modelId}</span>
                         </button>
                       ))}
                     </div>

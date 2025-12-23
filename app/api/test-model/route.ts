@@ -80,6 +80,40 @@ export async function POST(req: Request) {
                     }
                 );
 
+            } else if (provider === 'custom') {
+                if (!baseUrl) {
+                    return new Response(
+                        JSON.stringify({ 
+                            success: false, 
+                            error: 'Missing baseUrl for custom provider' 
+                        }), 
+                        { 
+                            status: 400,
+                            headers: { 'Content-Type': 'application/json' }
+                        }
+                    );
+                }
+                const openai = new OpenAI({
+                    apiKey: apiKey,
+                    baseURL: baseUrl,
+                });
+                const response = await openai.chat.completions.create({
+                    model: modelId,
+                    messages: [{ role: 'user', content: 'Hello' }],
+                    max_tokens: 50,
+                });
+                return new Response(
+                    JSON.stringify({ 
+                        success: true, 
+                        message: 'API key and model ID are valid',
+                        model: response.model
+                    }), 
+                    { 
+                        status: 200,
+                        headers: { 'Content-Type': 'application/json' }
+                    }
+                );
+
             } else if (provider === 'anthropic') {
                 const anthropic = new Anthropic({
                     apiKey: apiKey,

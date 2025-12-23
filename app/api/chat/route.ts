@@ -44,6 +44,21 @@ export async function POST(req: Request) {
             });
             stream = OpenAIStream(response as ReadableStream);
 
+        } else if (provider === 'custom') {
+            if (!baseUrl) {
+                return new Response('Missing baseUrl for custom provider', { status: 400 });
+            }
+            const openai = new OpenAI({
+                apiKey: apiKey,
+                baseURL: baseUrl,
+            });
+            const response = await openai.chat.completions.create({
+                model: modelId,
+                stream: true,
+                messages: messages.map((m: { role: string; content: string }) => ({ role: m.role, content: m.content })),
+            });
+            stream = OpenAIStream(response as ReadableStream);
+
         } else if (provider === 'anthropic') {
             const anthropic = new Anthropic({
                 apiKey: apiKey,

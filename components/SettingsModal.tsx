@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Key, Server, Plus, Trash2, Check, Edit2, TestTube, Loader2, AlertCircle } from 'lucide-react';
+import { X, Save, Key, Server, Plus, Trash2, Check, Edit2, TestTube, Loader2, AlertCircle, Copy } from 'lucide-react';
 import { AppConfig, ModelConfig, ModelProvider } from '@/lib/types';
 
 interface SettingsModalProps {
@@ -10,22 +10,20 @@ interface SettingsModalProps {
 }
 
 const PROVIDERS: { value: ModelProvider; label: string; defaultBaseUrl: string }[] = [
+    { value: 'openrouter', label: 'OpenRouter', defaultBaseUrl: 'https://openrouter.ai/api/v1' },
     { value: 'openai', label: 'OpenAI', defaultBaseUrl: 'https://api.openai.com/v1' },
     { value: 'anthropic', label: 'Anthropic', defaultBaseUrl: 'https://api.anthropic.com/v1' },
-    { value: 'openrouter', label: 'OpenRouter', defaultBaseUrl: 'https://openrouter.ai/api/v1' },
+    { value: 'custom', label: 'Custom', defaultBaseUrl: '' },
 ];
 
 export function SettingsModal({ isOpen, onClose, onSave, initialConfig }: SettingsModalProps) {
     const [config, setConfig] = useState<AppConfig>(initialConfig);
-    const [activeTab, setActiveTab] = useState<'models' | 'comparison'>('models');
-
     // New model form state
     const [newModel, setNewModel] = useState<Partial<ModelConfig>>({
-        provider: 'openai',
-        name: '',
+        provider: 'openrouter',
         apiKey: '',
         modelId: '',
-        baseUrl: 'https://api.openai.com/v1'
+        baseUrl: 'https://openrouter.ai/api/v1'
     });
 
     // Editing state
@@ -42,7 +40,7 @@ export function SettingsModal({ isOpen, onClose, onSave, initialConfig }: Settin
     if (!isOpen) return null;
 
     const handleAddModel = () => {
-        if (!newModel.name || !newModel.apiKey || !newModel.modelId) return;
+        if (!newModel.modelId || !newModel.apiKey) return;
 
         let updatedConfig: AppConfig;
         if (editingModelId) {
@@ -53,7 +51,7 @@ export function SettingsModal({ isOpen, onClose, onSave, initialConfig }: Settin
                     m.id === editingModelId
                         ? {
                             ...m,
-                            name: newModel.name!,
+                            name: newModel.modelId || '',
                             provider: newModel.provider as ModelProvider,
                             apiKey: newModel.apiKey!,
                             modelId: newModel.modelId!,
@@ -67,7 +65,7 @@ export function SettingsModal({ isOpen, onClose, onSave, initialConfig }: Settin
             // Add new model
             const model: ModelConfig = {
                 id: crypto.randomUUID(),
-                name: newModel.name,
+                name: newModel.modelId || '',
                 provider: newModel.provider as ModelProvider,
                 apiKey: newModel.apiKey,
                 modelId: newModel.modelId,
@@ -84,13 +82,13 @@ export function SettingsModal({ isOpen, onClose, onSave, initialConfig }: Settin
         // Auto-save when adding/editing models
         onSave(updatedConfig);
 
-        // Reset form
+        const defaultProvider = 'openrouter' as ModelProvider;
+        const defaultUrl = PROVIDERS.find(p => p.value === defaultProvider)?.defaultBaseUrl || '';
         setNewModel({
-            provider: 'openai',
-            name: '',
+            provider: defaultProvider,
             apiKey: '',
             modelId: '',
-            baseUrl: 'https://api.openai.com/v1'
+            baseUrl: defaultUrl
         });
     };
 
@@ -98,7 +96,6 @@ export function SettingsModal({ isOpen, onClose, onSave, initialConfig }: Settin
         setEditingModelId(model.id);
         setNewModel({
             provider: model.provider,
-            name: model.name,
             apiKey: model.apiKey,
             modelId: model.modelId,
             baseUrl: model.baseUrl || PROVIDERS.find(p => p.value === model.provider)?.defaultBaseUrl || ''
@@ -112,18 +109,19 @@ export function SettingsModal({ isOpen, onClose, onSave, initialConfig }: Settin
 
     const handleCancelEdit = () => {
         setEditingModelId(null);
+        const defaultProvider = 'openrouter' as ModelProvider;
+        const defaultUrl = PROVIDERS.find(p => p.value === defaultProvider)?.defaultBaseUrl || '';
         setNewModel({
-            provider: 'openai',
-            name: '',
+            provider: defaultProvider,
             apiKey: '',
             modelId: '',
-            baseUrl: 'https://api.openai.com/v1'
+            baseUrl: defaultUrl
         });
         setTestResult(null);
     };
 
     const handleTestModel = async () => {
-        if (!newModel.name || !newModel.apiKey || !newModel.modelId) {
+        if (!newModel.modelId || !newModel.apiKey) {
             setTestResult({
                 success: false,
                 message: '请先填写所有必填字段',
@@ -137,7 +135,7 @@ export function SettingsModal({ isOpen, onClose, onSave, initialConfig }: Settin
         try {
             const testConfig: ModelConfig = {
                 id: editingModelId || crypto.randomUUID(),
-                name: newModel.name,
+                name: newModel.modelId || '',
                 provider: newModel.provider as ModelProvider,
                 apiKey: newModel.apiKey,
                 modelId: newModel.modelId,
@@ -215,23 +213,13 @@ export function SettingsModal({ isOpen, onClose, onSave, initialConfig }: Settin
                 </div>
 
                 <div className="flex border-b border-slate-100 shrink-0">
-                    <button
-                        onClick={() => setActiveTab('models')}
-                        className={`flex-1 py-3 text-sm font-medium transition-colors ${activeTab === 'models' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
+                    <button className="flex-1 py-3 text-sm font-medium text-blue-600 border-b-2 border-blue-600">
                         Manage Models
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('comparison')}
-                        className={`flex-1 py-3 text-sm font-medium transition-colors ${activeTab === 'comparison' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                        Comparison Setup
                     </button>
                 </div>
 
                 <div className="p-6 overflow-y-auto flex-1">
-                    {activeTab === 'models' ? (
-                        <div className="space-y-8">
+                    <div className="space-y-8">
                             {/* Add/Edit Model Form */}
                             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
                                 <div className="flex items-center justify-between">
@@ -273,27 +261,13 @@ export function SettingsModal({ isOpen, onClose, onSave, initialConfig }: Settin
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="text-xs font-medium text-slate-500 mb-1 block">Display Name</label>
-                                        <input
-                                            type="text"
-                                            value={newModel.name}
-                                            onChange={e => setNewModel({ ...newModel, name: e.target.value })}
-                                            placeholder="e.g. GPT-4 Turbo"
-                                            className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                                        />
-                                    </div>
-                                    <div>
                                         <label className="text-xs font-medium text-slate-500 mb-1 block">Model ID (API)</label>
                                         <input
                                             type="text"
                                             value={newModel.modelId}
                                             onChange={e => {
                                                 const newModelId = e.target.value;
-                                                // Auto-update display name if it's empty or matches the old modelId
-                                                const newName = !newModel.name || newModel.name === newModel.modelId 
-                                                    ? newModelId 
-                                                    : newModel.name;
-                                                setNewModel({ ...newModel, modelId: newModelId, name: newName });
+                                                setNewModel({ ...newModel, modelId: newModelId });
                                             }}
                                             placeholder={
                                                 newModel.provider === 'openrouter' 
@@ -317,16 +291,18 @@ export function SettingsModal({ isOpen, onClose, onSave, initialConfig }: Settin
                                             className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-mono"
                                         />
                                     </div>
-                                    <div className="col-span-2">
-                                        <label className="text-xs font-medium text-slate-500 mb-1 block">Base URL (Optional)</label>
-                                        <input
-                                            type="text"
-                                            value={newModel.baseUrl}
-                                            onChange={e => setNewModel({ ...newModel, baseUrl: e.target.value })}
-                                            placeholder="https://api.openai.com/v1"
-                                            className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                                        />
-                                    </div>
+                                    {newModel.provider === 'custom' && (
+                                        <div className="col-span-2">
+                                            <label className="text-xs font-medium text-slate-500 mb-1 block">Base URL</label>
+                                            <input
+                                                type="text"
+                                                value={newModel.baseUrl}
+                                                onChange={e => setNewModel({ ...newModel, baseUrl: e.target.value })}
+                                                placeholder="https://your-custom-endpoint/v1"
+                                                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                                 {/* Test Result Display */}
                                 {testResult && (
@@ -364,7 +340,7 @@ export function SettingsModal({ isOpen, onClose, onSave, initialConfig }: Settin
                                 <div className="flex gap-2">
                                     <button
                                         onClick={handleTestModel}
-                                        disabled={!newModel.name || !newModel.apiKey || !newModel.modelId || isTesting}
+                                        disabled={!newModel.modelId || !newModel.apiKey || isTesting}
                                         className="flex-1 flex items-center justify-center gap-2 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                     >
                                         {isTesting ? (
@@ -381,7 +357,7 @@ export function SettingsModal({ isOpen, onClose, onSave, initialConfig }: Settin
                                     </button>
                                     <button
                                         onClick={handleAddModel}
-                                        disabled={!newModel.name || !newModel.apiKey || !newModel.modelId}
+                                        disabled={!newModel.modelId || !newModel.apiKey}
                                         className="flex-1 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                     >
                                         {editingModelId ? 'Update Model' : 'Add Model'}
@@ -406,11 +382,27 @@ export function SettingsModal({ isOpen, onClose, onSave, initialConfig }: Settin
                                                 <Server className="h-4 w-4" />
                                             </div>
                                             <div>
-                                                <p className="font-medium text-slate-800 text-sm">{model.name}</p>
+                                                <p className="font-medium text-slate-800 text-sm">{model.modelId}</p>
                                                 <p className="text-xs text-slate-500 font-mono">{model.modelId} • {model.provider}</p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-1">
+                                            <button
+                                                onClick={() => {
+                                                    setEditingModelId(null);
+                                                    setNewModel({
+                                                        provider: model.provider,
+                                                        apiKey: model.apiKey,
+                                                        modelId: model.modelId,
+                                                        baseUrl: model.baseUrl || PROVIDERS.find(p => p.value === model.provider)?.defaultBaseUrl || ''
+                                                    });
+                                                    setTestResult(null);
+                                                }}
+                                                className="p-2 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors"
+                                                title="复制为新模型"
+                                            >
+                                                <Copy className="h-4 w-4" />
+                                            </button>
                                             <button
                                                 onClick={() => handleEditModel(model)}
                                                 className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
@@ -430,57 +422,6 @@ export function SettingsModal({ isOpen, onClose, onSave, initialConfig }: Settin
                                 ))}
                             </div>
                         </div>
-                    ) : (
-                        <div className="space-y-6">
-                            <div className="grid grid-cols-2 gap-8">
-                                {/* Model A Selection */}
-                                <div className="space-y-4">
-                                    <div className="flex items-center gap-2 text-blue-600">
-                                        <div className="h-2 w-2 rounded-full bg-blue-600"></div>
-                                        <h3 className="font-semibold uppercase tracking-wider text-xs">Model A (Left)</h3>
-                                    </div>
-                                    <div className="space-y-2">
-                                        {config.models.map(model => (
-                                            <button
-                                                key={model.id}
-                                                onClick={() => setConfig(prev => ({ ...prev, comparison: { ...prev.comparison, modelAId: model.id } }))}
-                                                className={`w-full flex items-center justify-between p-3 rounded-lg border text-left transition-all ${config.comparison.modelAId === model.id
-                                                    ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
-                                                    : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50'
-                                                    }`}
-                                            >
-                                                <span className="text-sm font-medium text-slate-700">{model.name}</span>
-                                                {config.comparison.modelAId === model.id && <Check className="h-4 w-4 text-blue-600" />}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Model B Selection */}
-                                <div className="space-y-4">
-                                    <div className="flex items-center gap-2 text-purple-600">
-                                        <div className="h-2 w-2 rounded-full bg-purple-600"></div>
-                                        <h3 className="font-semibold uppercase tracking-wider text-xs">Model B (Right)</h3>
-                                    </div>
-                                    <div className="space-y-2">
-                                        {config.models.map(model => (
-                                            <button
-                                                key={model.id}
-                                                onClick={() => setConfig(prev => ({ ...prev, comparison: { ...prev.comparison, modelBId: model.id } }))}
-                                                className={`w-full flex items-center justify-between p-3 rounded-lg border text-left transition-all ${config.comparison.modelBId === model.id
-                                                    ? 'border-purple-500 bg-purple-50 ring-1 ring-purple-500'
-                                                    : 'border-slate-200 hover:border-purple-300 hover:bg-slate-50'
-                                                    }`}
-                                            >
-                                                <span className="text-sm font-medium text-slate-700">{model.name}</span>
-                                                {config.comparison.modelBId === model.id && <Check className="h-4 w-4 text-purple-600" />}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
                 </div>
 
                 <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 shrink-0">
@@ -493,7 +434,7 @@ export function SettingsModal({ isOpen, onClose, onSave, initialConfig }: Settin
                         className="flex items-center gap-2 px-6 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 font-medium"
                     >
                         <Save className="h-4 w-4" />
-                        应用更改并关闭
+                        保存并关闭
                     </button>
                 </div>
             </div>
