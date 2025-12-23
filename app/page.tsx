@@ -11,7 +11,6 @@ export default function Home() {
   const [activeView, setActiveView] = useState<'comparison' | string>('comparison');
   const [isModelSelectorOpen, setIsModelSelectorOpen] = useState<'A' | 'B' | null>(null);
 
-  // Initial config state
   const [config, setConfig] = useState<AppConfig>({
     models: [],
     comparison: {
@@ -19,27 +18,32 @@ export default function Home() {
       modelBId: ''
     }
   });
+  const [isConfigLoading, setIsConfigLoading] = useState(true);
+  const [configError, setConfigError] = useState<string | null>(null);
 
-  // Load config from localStorage on mount
   useEffect(() => {
-    const savedConfig = localStorage.getItem('modelConfig');
-    if (savedConfig) {
+    const loadConfig = async () => {
       try {
-        const parsed = JSON.parse(savedConfig);
-        // Ensure required properties exist to prevent crashes from old config versions
-        if (!Array.isArray(parsed.models)) parsed.models = [];
-        if (!parsed.comparison) parsed.comparison = { modelAId: '', modelBId: '' };
-        setConfig(parsed);
+        setIsConfigLoading(true);
+        setConfigError(null);
+        const response = await fetch('/api/config');
+        if (!response.ok) {
+          throw new Error('Failed to load config');
+        }
+        const data: AppConfig = await response.json();
+        if (!Array.isArray(data.models)) data.models = [];
+        if (!data.comparison) data.comparison = { modelAId: '', modelBId: '' };
+        setConfig(data);
       } catch (e) {
-        console.error("Failed to parse config", e);
+        console.error('Failed to load config', e);
+        const message = e instanceof Error ? e.message : '配置加载失败';
+        setConfigError(message);
+      } finally {
+        setIsConfigLoading(false);
       }
-    }
+    };
+    loadConfig();
   }, []);
-
-  // Save config to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem('modelConfig', JSON.stringify(config));
-  }, [config]);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);

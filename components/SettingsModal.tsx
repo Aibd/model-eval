@@ -175,11 +175,11 @@ export function SettingsModal({ isOpen, onClose, onSave, initialConfig }: Settin
                     error: data.details?.message || data.details?.error?.message || data.originalError,
                 });
             }
-        } catch (error: any) {
+        } catch (error) {
             setTestResult({
                 success: false,
                 message: '测试时发生错误',
-                error: error.message || '未知错误',
+                error: error instanceof Error ? error.message : '未知错误',
             });
         } finally {
             setIsTesting(false);

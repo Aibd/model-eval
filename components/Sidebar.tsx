@@ -19,11 +19,14 @@ export function Sidebar({ isOpen, toggleSidebar, config, setConfig, onSelectMode
     const handleSaveConfig = (newConfig: AppConfig) => {
         setConfig(newConfig);
         setIsSettingsOpen(false);
-        localStorage.setItem('modelConfig', JSON.stringify(newConfig));
+        fetch('/api/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newConfig)
+        }).catch(() => {});
     };
 
-    // Load history from storage
-    const [history, setHistory] = useState<any[]>([]);
+    const [history, setHistory] = useState<{ id: string; title: string; createdAt: number; type: string }[]>([]);
 
     useEffect(() => {
         const loadHistory = () => {

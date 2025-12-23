@@ -1,5 +1,8 @@
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
+import { promises as fs } from 'fs';
+import path from 'path';
+import { AppConfig, ModelConfig } from '@/lib/types';
 
 export const runtime = 'edge';
 
@@ -24,7 +27,21 @@ export async function POST(req: Request) {
     try {
         const { modelConfig } = await req.json();
 
-        if (!modelConfig || !modelConfig.apiKey || !modelConfig.modelId) {
+        let resolvedModelConfig: ModelConfig | null = null;
+        if (modelConfig && modelConfig.id) {
+            try {
+                const configPath = path.join(process.cwd(), 'config', 'models.json');
+                const data = await fs.readFile(configPath, 'utf-8');
+                const storedConfig = JSON.parse(data) as AppConfig;
+                resolvedModelConfig = storedConfig.models.find(m => m.id === modelConfig.id) || null;
+            } catch {
+                resolvedModelConfig = null;
+            }
+        }
+
+        const effectiveConfig = resolvedModelConfig || modelConfig;
+
+        if (!effectiveConfig || !effectiveConfig.apiKey || !effectiveConfig.modelId) {
             return new Response(
                 JSON.stringify({ 
                     success: false, 
@@ -37,7 +54,7 @@ export async function POST(req: Request) {
             );
         }
 
-        const { provider, apiKey, baseUrl, modelId } = modelConfig;
+        const { provider, apiKey, baseUrl, modelId } = effectiveConfig;
 
         // Test the configuration with a simple request
         try {

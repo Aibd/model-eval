@@ -1,6 +1,9 @@
 import { OpenAIStream, AnthropicStream, StreamingTextResponse } from 'ai';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
+import { promises as fs } from 'fs';
+import path from 'path';
+import { AppConfig, ModelConfig } from '@/lib/types';
 
 export const runtime = 'edge';
 
@@ -8,12 +11,25 @@ export async function POST(req: Request) {
     try {
         const { messages, modelConfig, enableWebSearch } = await req.json();
 
+        let resolvedModelConfig: ModelConfig | null = null;
+        if (modelConfig && modelConfig.id) {
+            try {
+                const configPath = path.join(process.cwd(), 'config', 'models.json');
+                const data = await fs.readFile(configPath, 'utf-8');
+                const storedConfig = JSON.parse(data) as AppConfig;
+                resolvedModelConfig = storedConfig.models.find(m => m.id === modelConfig.id) || null;
+            } catch {
+                resolvedModelConfig = null;
+            }
+        }
 
-        if (!modelConfig || !modelConfig.apiKey || !modelConfig.modelId) {
+        const effectiveConfig = resolvedModelConfig || modelConfig;
+
+        if (!effectiveConfig || !effectiveConfig.apiKey || !effectiveConfig.modelId) {
             return new Response('Missing model configuration', { status: 400 });
         }
 
-        const { provider, apiKey, baseUrl, modelId } = modelConfig;
+        const { provider, apiKey, baseUrl, modelId } = effectiveConfig;
         let stream;
 
         if (provider === 'openai') {
@@ -24,9 +40,9 @@ export async function POST(req: Request) {
             const response = await openai.chat.completions.create({
                 model: modelId,
                 stream: true,
-                messages: messages.map((m: any) => ({ role: m.role, content: m.content })),
+                messages: messages.map((m: { role: string; content: string }) => ({ role: m.role, content: m.content })),
             });
-            stream = OpenAIStream(response as any);
+            stream = OpenAIStream(response as ReadableStream);
 
         } else if (provider === 'anthropic') {
             const anthropic = new Anthropic({
@@ -35,8 +51,8 @@ export async function POST(req: Request) {
             });
 
             // Extract system message if present
-            const systemMessage = messages.find((m: any) => m.role === 'system')?.content;
-            const conversationMessages = messages.filter((m: any) => m.role !== 'system').map((m: any) => ({
+            const systemMessage = messages.find((m: { role: string; content: string }) => m.role === 'system')?.content;
+            const conversationMessages = messages.filter((m: { role: string; content: string }) => m.role !== 'system').map((m: { role: string; content: string }) => ({
                 role: m.role,
                 content: m.content
             }));
@@ -48,7 +64,7 @@ export async function POST(req: Request) {
                 messages: conversationMessages,
                 system: systemMessage,
             });
-            stream = AnthropicStream(response as any);
+            stream = AnthropicStream(response as ReadableStream);
 
         } else if (provider === 'openrouter') {
             // Note: We don't strictly validate model ID format here
@@ -76,10 +92,15 @@ export async function POST(req: Request) {
             });
             
             // Prepare request options
-            const requestOptions: any = {
+            const requestOptions: {
+                model: string;
+                stream: boolean;
+                messages: { role: string; content: string }[];
+                plugins?: { id: string; engine: string }[];
+            } = {
                 model: modelId,
                 stream: true,
-                messages: messages.map((m: any) => ({ role: m.role, content: m.content })),
+                messages: messages.map((m: { role: string; content: string }) => ({ role: m.role, content: m.content })),
             };
 
             // Add web search for OpenRouter if enabled
@@ -91,7 +112,7 @@ export async function POST(req: Request) {
                 requestOptions.plugins = [
                     {
                         id: 'web',
-                        engine: 'native'  // Always try native first, OpenRouter handles fallback automatically
+                        engine: 'native'
                     }
                 ];
 
@@ -102,8 +123,8 @@ export async function POST(req: Request) {
 
             try {
                 const response = await openai.chat.completions.create(requestOptions);
-                stream = OpenAIStream(response as any);
-            } catch (searchError: any) {
+                stream = OpenAIStream(response as ReadableStream);
+            } catch (searchError) {
                 console.error(`Web search failed for model ${modelId}:`, {
                     error: searchError?.message || searchError,
                     status: searchError?.status,
@@ -120,7 +141,12 @@ export async function POST(req: Request) {
                     console.log(`Model ${modelId} doesn't support native web search, retrying with Exa engine...`);
 
                     // Retry with Exa engine
-                    const exaRetryOptions = {
+                    const exaRetryOptions: {
+                        model: string;
+                        stream: boolean;
+                        messages: { role: string; content: string }[];
+                        plugins: { id: string; engine: string }[];
+                    } = {
                         ...requestOptions,
                         plugins: [
                             {
@@ -132,23 +158,28 @@ export async function POST(req: Request) {
 
                     try {
                         const response = await openai.chat.completions.create(exaRetryOptions);
-                        stream = OpenAIStream(response as any);
+                        stream = OpenAIStream(response as ReadableStream);
                         console.log(`Successfully retried with Exa engine for model ${modelId}`);
-                    } catch (exaError: any) {
+                    } catch (exaError) {
                         console.error(`Exa engine also failed for model ${modelId}:`, exaError?.message || exaError);
 
                         // Final fallback: retry without any web search
                         console.warn(`Falling back to no web search for model ${modelId}`);
-                        const finalRetryOptions = {
+                        const finalRetryOptions: {
+                            model: string;
+                            stream: boolean;
+                            messages: { role: string; content: string }[];
+                            plugins?: { id: string; engine: string }[];
+                        } = {
                             ...requestOptions
                         };
                         delete finalRetryOptions.plugins;
 
                         try {
                             const response = await openai.chat.completions.create(finalRetryOptions);
-                            stream = OpenAIStream(response as any);
+                            stream = OpenAIStream(response as ReadableStream);
                             console.log(`Successfully completed request without web search for model ${modelId}`);
-                        } catch (finalError: any) {
+                        } catch (finalError) {
                             console.error(`All attempts failed for model ${modelId}:`, finalError?.message || finalError);
                             throw finalError;
                         }
@@ -156,16 +187,21 @@ export async function POST(req: Request) {
                 } else if (enableWebSearch) {
                     // For other web search errors, retry without plugins
                     console.warn(`Web search failed for model ${modelId}, retrying without plugins...`);
-                    const retryOptions = {
+                    const retryOptions: {
+                        model: string;
+                        stream: boolean;
+                        messages: { role: string; content: string }[];
+                        plugins?: { id: string; engine: string }[];
+                    } = {
                         ...requestOptions
                     };
                     delete retryOptions.plugins;
 
                     try {
                         const response = await openai.chat.completions.create(retryOptions);
-                        stream = OpenAIStream(response as any);
+                        stream = OpenAIStream(response as ReadableStream);
                         console.log(`Successfully retried without web search for model ${modelId}`);
-                    } catch (retryError: any) {
+                    } catch (retryError) {
                         console.error(`Retry also failed for model ${modelId}:`, retryError?.message || retryError);
                         throw retryError;
                     }
@@ -178,7 +214,7 @@ export async function POST(req: Request) {
         }
 
         return new StreamingTextResponse(stream);
-    } catch (error: any) {
+    } catch (error) {
         console.error('API Error:', error);
         
         // 处理 API key 错误
