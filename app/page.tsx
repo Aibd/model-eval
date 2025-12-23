@@ -3,11 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from '@/components/Sidebar';
 import { ChatInterface } from '@/components/ChatInterface';
+import { CodeCompareInterface } from '@/components/CodeCompareInterface';
 import { Menu, Bot, ChevronDown, ChevronUp, Zap } from 'lucide-react';
 import { AppConfig } from '@/lib/types';
 
 export default function Home() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [mode, setMode] = useState<'chat' | 'code'>('chat');
   const [activeView, setActiveView] = useState<'comparison' | string>('comparison');
   const [isModelSelectorOpen, setIsModelSelectorOpen] = useState<'A' | 'B' | null>(null);
 
@@ -99,12 +101,15 @@ export default function Home() {
               <Menu className="h-5 w-5" />
             </button>
             <h1 className="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              {activeView === 'comparison' ? 'Model Arena' : config.models?.find(m => m.id === activeView)?.modelId || 'Chat'}
+              {mode === 'code'
+                ? 'Code Arena'
+                : activeView === 'comparison'
+                  ? 'Model Arena'
+                  : config.models?.find(m => m.id === activeView)?.modelId || 'Chat'}
             </h1>
           </div>
 
-          {/* Model Comparison Selector - Only show when in comparison view */}
-          {activeView === 'comparison' && (
+          { (mode === 'code' || activeView === 'comparison') && (
             <div className="flex-1 flex justify-center px-8">
               <div className="flex items-center gap-4">
                 {/* Model A Selector */}
@@ -187,13 +192,38 @@ export default function Home() {
             </div>
           )}
 
-          {/* Settings button on the right */}
-          <div></div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setMode('chat')}
+              className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
+                mode === 'chat'
+                  ? 'bg-slate-900 text-white border-slate-900'
+                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              Chat Compare
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('code')}
+              className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
+                mode === 'code'
+                  ? 'bg-slate-900 text-white border-slate-900'
+                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              Code Compare
+            </button>
+          </div>
         </header>
 
-        {/* Main Content */}
         <main className="flex-1 overflow-hidden relative">
-          <ChatInterface config={config} setConfig={setConfig} activeView={activeView} />
+          {mode === 'chat' ? (
+            <ChatInterface config={config} setConfig={setConfig} activeView={activeView} />
+          ) : (
+            <CodeCompareInterface config={config} setConfig={setConfig} />
+          )}
         </main>
       </div>
     </div>
