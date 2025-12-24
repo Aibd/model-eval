@@ -6,13 +6,21 @@ import { findModelById } from '@/lib/db';
 
 export const runtime = 'nodejs';
 
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+
 export async function POST(req: Request) {
     try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user) {
+            return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+        }
+        const userId = (session.user as any).id || session.user.email || 'default';
         const { messages, modelConfig, enableWebSearch } = await req.json();
 
         let resolvedModelConfig: ModelConfig | null = null;
         if (modelConfig && modelConfig.id) {
-            resolvedModelConfig = findModelById(modelConfig.id);
+            resolvedModelConfig = findModelById(userId, modelConfig.id);
         }
 
         const effectiveConfig = resolvedModelConfig || modelConfig;

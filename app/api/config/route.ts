@@ -2,8 +2,16 @@ import { NextRequest } from 'next/server';
 import { AppConfig } from '@/lib/types';
 import { readAppConfig, writeAppConfig } from '@/lib/db';
 
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+
 export async function GET() {
-    const config = await Promise.resolve(readAppConfig(true));
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+    }
+    const userId = (session.user as any).id || session.user.email || 'default';
+    const config = await Promise.resolve(readAppConfig(userId, true));
     return new Response(JSON.stringify(config), {
         status: 200,
         headers: { 'Content-Type': 'application/json' }
@@ -12,8 +20,13 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
     try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user) {
+            return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+        }
+        const userId = (session.user as any).id || session.user.email || 'default';
         const config = (await req.json()) as AppConfig;
-        await Promise.resolve(writeAppConfig(config));
+        await Promise.resolve(writeAppConfig(userId, config));
         return new Response(JSON.stringify({ success: true }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }

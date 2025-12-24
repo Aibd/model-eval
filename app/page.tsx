@@ -7,8 +7,20 @@ import { CodeCompareInterface } from '@/components/CodeCompareInterface';
 import { Menu, Bot, ChevronDown, ChevronUp, Zap, Code, Eye } from 'lucide-react';
 import { AppConfig, ChatSession } from '@/lib/types';
 
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+
 export default function Home() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    }
+  }, [status, router]);
+
   const [mode, setMode] = useState<'chat' | 'code'>('chat');
   const [activeView, setActiveView] = useState<'comparison' | string>('comparison');
   const [isModelSelectorOpen, setIsModelSelectorOpen] = useState<'A' | 'B' | null>(null);
@@ -119,8 +131,19 @@ export default function Home() {
     }
   };
 
+  if (status === 'loading' || status === 'unauthenticated') {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-slate-500 font-medium">Authenticating...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-slate-50">
+    <div className="flex h-screen bg-slate-50 overflow-hidden font-sans text-slate-900">
       <Sidebar
         isOpen={isSidebarOpen}
         toggleSidebar={toggleSidebar}

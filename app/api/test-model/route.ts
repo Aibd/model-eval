@@ -22,13 +22,21 @@ interface APIError {
     type?: string;
 }
 
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+
 export async function POST(req: Request) {
     try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user) {
+            return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+        }
+        const userId = (session.user as any).id || session.user.email || 'default';
         const { modelConfig } = await req.json();
 
         let resolvedModelConfig: ModelConfig | null = null;
         if (modelConfig && modelConfig.id) {
-            resolvedModelConfig = findModelById(modelConfig.id);
+            resolvedModelConfig = findModelById(userId, modelConfig.id);
         }
 
         const effectiveConfig = resolvedModelConfig || modelConfig;
@@ -153,13 +161,6 @@ export async function POST(req: Request) {
                     },
                 });
                 
-                // Log request details for debugging
-                console.log('Testing OpenRouter model:', {
-                    modelId,
-                    baseURL: baseUrl || 'https://openrouter.ai/api/v1',
-                    referer: refererUrl,
-                });
-                
                 try {
                     // Use similar parameters as chat API
                     // Some models (like gpt-5.2) may require more tokens or different settings
@@ -182,15 +183,7 @@ export async function POST(req: Request) {
                         }
                     );
                 } catch (apiError: unknown) {
-                    // Log detailed error for debugging
                     const err = apiError as APIError;
-                    console.error('OpenRouter API error:', {
-                        modelId,
-                        error: apiError,
-                        errorMessage: err?.message,
-                        errorResponse: err?.response,
-                        status: err?.status,
-                    });
                     throw apiError;
                 }
             } else {

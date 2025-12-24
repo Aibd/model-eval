@@ -27,16 +27,24 @@ This project is optimized for Docker deployment using `standalone` output mode.
 ### Prerequisites
 
 - Docker and Docker Compose installed.
-- An existing Docker network named `proxy-network` (or modify `docker-compose.yml` to match your network).
-
-To create the network if it doesn't exist:
-```bash
-docker network create proxy-network
-```
+- An existing Docker network named `proxy-network`.
+- **Google OAuth Credentials**:
+  1. Go to [Google Cloud Console](https://console.cloud.google.com/).
+  2. Create a new project.
+  3. Go to "APIs & Services" > "Credentials".
+  4. Create "OAuth 2.0 Client IDs".
+  5. Set the "Authorized redirect URIs" to `https://your-domain.com/api/auth/callback/google` (or `http://localhost:3000/api/auth/callback/google` for local testing).
 
 ### Deployment Steps
 
-1. **Build and Start with Docker Compose:**
+1. **Configure Environment Variables:**
+   Update the `environment` section in `docker-compose.yml` with your actual values:
+   - `NEXTAUTH_URL`: Your production URL.
+   - `NEXTAUTH_SECRET`: A random string (you can generate one with `openssl rand -base64 32`).
+   - `GOOGLE_CLIENT_ID`: From Google Cloud Console.
+   - `GOOGLE_CLIENT_SECRET`: From Google Cloud Console.
+
+2. **Build and Start with Docker Compose:**
    ```bash
    docker-compose up -d --build
    ```
