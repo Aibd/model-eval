@@ -3,23 +3,31 @@
 import React, { useState } from 'react';
 import { useChat } from 'ai/react';
 import { AppConfig } from '@/lib/types';
-import { AlertCircle, X, Maximize2, Minimize2, Bot, Copy } from 'lucide-react';
+import { AlertCircle, X, Maximize2, Minimize2, Bot, Copy, Eye, Code } from 'lucide-react';
 import { InputArea } from './InputArea';
 
 interface CodeCompareInterfaceProps {
     config: AppConfig;
     setConfig: (config: AppConfig) => void;
+    leftMode: PanelMode;
+    setLeftMode: (mode: PanelMode) => void;
+    rightMode: PanelMode;
+    setRightMode: (mode: PanelMode) => void;
 }
 
 type PanelMode = 'code' | 'preview';
 
-export function CodeCompareInterface({ config }: CodeCompareInterfaceProps) {
+export function CodeCompareInterface({ 
+    config, 
+    leftMode, 
+    setLeftMode, 
+    rightMode, 
+    setRightMode 
+}: CodeCompareInterfaceProps) {
     const [errorA, setErrorA] = useState<string | null>(null);
     const [errorB, setErrorB] = useState<string | null>(null);
     const [enableWebSearch, setEnableWebSearch] = useState(true);
 
-    const [leftMode, setLeftMode] = useState<PanelMode>('code');
-    const [rightMode, setRightMode] = useState<PanelMode>('code');
     const [leftFullscreen, setLeftFullscreen] = useState(false);
     const [rightFullscreen, setRightFullscreen] = useState(false);
     const [leftCode, setLeftCode] = useState('');
@@ -48,10 +56,10 @@ export function CodeCompareInterface({ config }: CodeCompareInterfaceProps) {
         onError: async (err) => {
             try {
                 const errorData = await err.response?.json?.() || {};
-                const errorMessage = errorData.message || errorData.error || '请求失败，请检查 API 配置';
+                const errorMessage = errorData.message || errorData.error || 'Request failed, please check API configuration';
                 setErrorA(errorMessage);
             } catch {
-                setErrorA('请求失败，请检查 API 配置');
+                setErrorA('Request failed, please check API configuration');
             }
         },
     });
@@ -74,15 +82,19 @@ export function CodeCompareInterface({ config }: CodeCompareInterfaceProps) {
         onError: async (err) => {
             try {
                 const errorData = await err.response?.json?.() || {};
-                const errorMessage = errorData.message || errorData.error || '请求失败，请检查 API 配置';
+                const errorMessage = errorData.message || errorData.error || 'Request failed, please check API configuration';
                 setErrorB(errorMessage);
             } catch {
-                setErrorB('请求失败，请检查 API 配置');
+                setErrorB('Request failed, please check API configuration');
             }
         },
     });
 
     const handleSend = async (message: string, file?: File) => {
+        // Clear existing edited code when sending a new request
+        setLeftCode('');
+        setRightCode('');
+        
         const contextMessage = file
             ? `${message}\n\n[Attached File: ${file.name}]`
             : message;
@@ -117,12 +129,12 @@ export function CodeCompareInterface({ config }: CodeCompareInterfaceProps) {
 
     const renderCode = (value: string, onChange: (v: string) => void) => {
         return (
-            <div className="h-full w-full overflow-auto bg-slate-900 text-slate-50 text-xs p-0.5 rounded-xl">
+            <div className="h-full w-full bg-slate-900 text-slate-50 text-xs rounded-xl overflow-hidden">
                 <textarea
-                    className="h-full w-full resize-none bg-slate-900 text-slate-50 text-xs p-4 rounded-lg font-mono outline-none border-0"
+                    className="h-full w-full resize-none bg-slate-900 text-slate-50 text-xs p-4 font-mono outline-none border-0"
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
-                    placeholder="在这里粘贴或编辑代码..."
+                    placeholder="Paste or edit code here..."
                 />
             </div>
         );
@@ -132,14 +144,43 @@ export function CodeCompareInterface({ config }: CodeCompareInterfaceProps) {
         if (!content) {
             return (
                 <div className="h-full flex items-center justify-center text-slate-400 text-sm">
-                    暂无预览内容
+                    No preview content available
                 </div>
             );
         }
+
+        const isSvg = content.trim().startsWith('<svg') || content.trim().startsWith('<?xml');
+        
+        const wrappedContent = isSvg ? `
+            <html>
+                <head>
+                    <style>
+                        body { 
+                            margin: 0; 
+                            display: flex; 
+                            align-items: center; 
+                            justify-content: center; 
+                            height: 100vh; 
+                            width: 100vw; 
+                            overflow: hidden;
+                            background-color: transparent;
+                        }
+                        svg { 
+                            max-width: 100%; 
+                            max-height: 100%; 
+                            width: auto; 
+                            height: auto; 
+                        }
+                    </style>
+                </head>
+                <body>${content}</body>
+            </html>
+        ` : content;
+
         return (
             <iframe
                 className="w-full h-full rounded-xl border border-slate-200 bg-white"
-                srcDoc={content}
+                srcDoc={wrappedContent}
                 sandbox="allow-scripts allow-same-origin"
             />
         );
@@ -152,8 +193,6 @@ export function CodeCompareInterface({ config }: CodeCompareInterfaceProps) {
         setMode: (m: PanelMode) => void,
         fullscreen: boolean,
         setFullscreen: (v: boolean) => void,
-        codeContent: string | undefined,
-        previewContent: string | undefined,
         isLoadingSide: boolean
     ) => {
         const currentCodeValue = side === 'A'
@@ -161,83 +200,76 @@ export function CodeCompareInterface({ config }: CodeCompareInterfaceProps) {
             : (rightCode || normalizedContentB);
 
         const panel = (
-            <div className="flex flex-col h-full bg-slate-50">
-                <div className="flex items-center justify-between px-4 py-2 border-b border-slate-200 bg-white">
-                    <div className="flex items-center gap-2">
-                        <div className={`h-8 w-8 rounded-full flex items-center justify-center shadow-sm border bg-white ${side === 'A' ? 'border-blue-100' : 'border-purple-100'}`}>
-                            <Bot className={`h-4 w-4 ${side === 'A' ? 'text-blue-600' : 'text-purple-600'}`} />
-                        </div>
-                        <div className="flex flex-col">
-                            <span className="text-xs font-semibold text-slate-600">
-                                {side === 'A' ? '模型 A' : '模型 B'}
-                            </span>
-                            <span className="text-xs text-slate-500 truncate max-w-[180px]">
-                                {modelName || '未选择模型'}
-                            </span>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="inline-flex rounded-full bg-slate-100 p-1">
-                            <button
-                                type="button"
-                                onClick={() => setMode('code')}
-                                className={`px-3 py-1 text-xs rounded-full transition-colors ${
-                                    mode === 'code'
-                                        ? 'bg-white text-slate-900 shadow-sm'
-                                        : 'text-slate-500'
-                                }`}
-                            >
-                                Code
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setMode('preview')}
-                                className={`px-3 py-1 text-xs rounded-full transition-colors ${
-                                    mode === 'preview'
-                                        ? 'bg-white text-slate-900 shadow-sm'
-                                        : 'text-slate-500'
-                                }`}
-                            >
-                                Preview
-                            </button>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => setFullscreen(!fullscreen)}
-                            className="p-1.5 rounded-full border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
-                            title="全屏预览"
-                        >
-                            {fullscreen ? (
-                                <Minimize2 className="h-4 w-4" />
-                            ) : (
-                                <Maximize2 className="h-4 w-4" />
-                            )}
-                        </button>
-                    </div>
-                </div>
+            <div className="flex flex-col h-full bg-slate-50 group/panel">
                 <div className="flex-1 p-3">
-                    <div className="h-full rounded-xl border border-slate-200 bg-slate-950/5 overflow-hidden relative">
+                    <div className="h-full rounded-xl border border-slate-200 bg-slate-950/5 overflow-hidden relative group/content">
                         {isLoadingSide && (
-                            <div className="absolute top-2 left-2 text-[10px] px-2 py-0.5 rounded-full bg-slate-900 text-white">
-                                生成中...
+                            <div className="absolute top-3 left-3 z-20 text-[10px] px-2 py-0.5 rounded-full bg-slate-900 text-white">
+                                Generating...
                             </div>
                         )}
-                        {mode === 'code' && currentCodeValue && (
-                            <button
-                                type="button"
-                                onClick={async () => {
-                                    try {
-                                        await navigator.clipboard.writeText(currentCodeValue);
-                                    } catch (e) {
-                                        console.error('Copy failed', e);
-                                    }
-                                }}
-                                className="absolute top-2 right-2 p-1.5 rounded-md bg-slate-900/80 text-slate-100 hover:bg-slate-900 transition-colors"
-                                title="Copy code"
-                            >
-                                <Copy className="h-3.5 w-3.5" />
-                            </button>
-                        )}
+                        
+                        {/* Hover Overlay Controls */}
+                        <div className="absolute top-0 left-0 right-0 p-3 flex items-start justify-end z-10 opacity-0 group-hover/panel:opacity-100 transition-all duration-200 pointer-events-none">
+                            <div className="flex items-center gap-1.5 pointer-events-auto">
+                                <div className="flex items-center gap-1 p-1 rounded-lg bg-white/95 backdrop-blur-md border border-slate-200 shadow-lg mr-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => setMode('code')}
+                                        className={`p-1.5 rounded-md transition-all ${
+                                            mode === 'code' 
+                                                ? 'bg-blue-50 text-blue-600' 
+                                                : 'text-slate-400 hover:text-slate-600'
+                                        }`}
+                                        title="Code Mode"
+                                    >
+                                        <Code className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setMode('preview')}
+                                        className={`p-1.5 rounded-md transition-all ${
+                                            mode === 'preview' 
+                                                ? 'bg-blue-50 text-blue-600' 
+                                                : 'text-slate-400 hover:text-slate-600'
+                                        }`}
+                                        title="Preview Mode"
+                                    >
+                                        <Eye className="h-3.5 w-3.5" />
+                                    </button>
+                                </div>
+
+                                {mode === 'code' && currentCodeValue && (
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            try {
+                                                await navigator.clipboard.writeText(currentCodeValue);
+                                            } catch (e) {
+                                                console.error('Copy failed', e);
+                                            }
+                                        }}
+                                        className="p-2 rounded-lg bg-white/95 backdrop-blur-md border border-slate-200 text-slate-600 hover:bg-white hover:text-blue-600 transition-all shadow-lg hover:scale-105 active:scale-95"
+                                        title="Copy code"
+                                    >
+                                        <Copy className="h-4 w-4" />
+                                    </button>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => setFullscreen(!fullscreen)}
+                                    className="p-2 rounded-lg bg-white/95 backdrop-blur-md border border-slate-200 text-slate-600 hover:bg-white hover:text-blue-600 transition-all shadow-lg hover:scale-105 active:scale-95"
+                                    title="Fullscreen Preview"
+                                >
+                                    {fullscreen ? (
+                                        <Minimize2 className="h-4 w-4" />
+                                    ) : (
+                                        <Maximize2 className="h-4 w-4" />
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+
                         <div className="h-full">
                             {mode === 'code'
                                 ? renderCode(
@@ -258,18 +290,17 @@ export function CodeCompareInterface({ config }: CodeCompareInterfaceProps) {
         return (
             <>
                 {panel}
-                <div className="fixed inset-0 z-40 bg-black/70 flex items-center justify-center">
-                    <div className="w-full h-full max-w-6xl max-h-[90vh] bg-slate-900 rounded-2xl shadow-2xl overflow-hidden relative">
-                        <button
-                            type="button"
-                            onClick={() => setFullscreen(false)}
-                            className="absolute top-3 right-3 z-50 p-2 rounded-full bg-black/40 text-slate-100 hover:bg-black/60 transition-colors"
-                        >
-                            <Minimize2 className="h-4 w-4" />
-                        </button>
-                        <div className="w-full h-full bg-slate-900 p-4">
-                            {renderPreview(currentCodeValue)}
-                        </div>
+                <div className="fixed inset-0 z-[100] bg-white group/fullscreen">
+                    <button
+                        type="button"
+                        onClick={() => setFullscreen(false)}
+                        className="absolute top-4 right-4 z-[110] p-2.5 rounded-full bg-slate-900/10 hover:bg-slate-900/20 text-slate-600 hover:text-slate-900 transition-all opacity-0 group-hover/fullscreen:opacity-100 backdrop-blur-sm border border-white/20"
+                        title="Exit Fullscreen"
+                    >
+                        <Minimize2 className="h-5 w-5" />
+                    </button>
+                    <div className="w-full h-full">
+                        {renderPreview(currentCodeValue)}
                     </div>
                 </div>
             </>
@@ -282,7 +313,9 @@ export function CodeCompareInterface({ config }: CodeCompareInterfaceProps) {
                 <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
                     <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
                     <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-red-800">模型 A 错误</p>
+                        <p className="text-sm font-medium text-red-800">
+                            {modelAConfig?.modelId || 'Model A'} Error
+                        </p>
                         <p className="text-xs text-red-600 mt-1">{errorA}</p>
                     </div>
                     <button
@@ -298,7 +331,9 @@ export function CodeCompareInterface({ config }: CodeCompareInterfaceProps) {
                 <div className="mx-6 mt-2 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
                     <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
                     <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-red-800">模型 B 错误</p>
+                        <p className="text-sm font-medium text-red-800">
+                            {modelBConfig?.modelId || 'Model B'} Error
+                        </p>
                         <p className="text-xs text-red-600 mt-1">{errorB}</p>
                     </div>
                     <button
@@ -320,8 +355,6 @@ export function CodeCompareInterface({ config }: CodeCompareInterfaceProps) {
                         setLeftMode,
                         leftFullscreen,
                         setLeftFullscreen,
-                        normalizedContentA || undefined,
-                        normalizedContentA || undefined,
                         isLoadingA
                     )}
                 </div>
@@ -333,8 +366,6 @@ export function CodeCompareInterface({ config }: CodeCompareInterfaceProps) {
                         setRightMode,
                         rightFullscreen,
                         setRightFullscreen,
-                        normalizedContentB || undefined,
-                        normalizedContentB || undefined,
                         isLoadingB
                     )}
                 </div>

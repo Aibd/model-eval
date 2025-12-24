@@ -80,7 +80,7 @@ export function InputArea({ onSend, isLoading, enableWebSearch = false, onWebSea
                                     ? 'text-blue-600 hover:bg-blue-50'
                                     : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100/50'
                             }`}
-                            title={enableWebSearch ? '关闭联网搜索' : '开启联网搜索'}
+                            title={enableWebSearch ? 'Disable Web Search' : 'Enable Web Search'}
                         >
                             <Globe className="h-4 w-4" />
                         </button>

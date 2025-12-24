@@ -57,10 +57,10 @@ export function ChatInterface({ config, setConfig, activeView, loadedSession }: 
             console.error("Model A Error:", err);
             try {
                 const errorData = await err.response?.json?.() || {};
-                const errorMessage = errorData.message || errorData.error || '请求失败，请检查 API 配置';
+                const errorMessage = errorData.message || errorData.error || 'Request failed, please check API configuration';
                 setErrorA(errorMessage);
             } catch {
-                setErrorA('请求失败，请检查 API 配置');
+                setErrorA('Request failed, please check API configuration');
             }
         },
     });
@@ -86,10 +86,10 @@ export function ChatInterface({ config, setConfig, activeView, loadedSession }: 
             console.error("Model B Error:", err);
             try {
                 const errorData = await err.response?.json?.() || {};
-                const errorMessage = errorData.message || errorData.error || '请求失败，请检查 API 配置';
+                const errorMessage = errorData.message || errorData.error || 'Request failed, please check API configuration';
                 setErrorB(errorMessage);
             } catch {
-                setErrorB('请求失败，请检查 API 配置');
+                setErrorB('Request failed, please check API configuration');
             }
         },
     });
@@ -181,7 +181,7 @@ export function ChatInterface({ config, setConfig, activeView, loadedSession }: 
                     <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
                         <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-red-800">模型 A 错误</p>
+                            <p className="text-sm font-medium text-red-800">Model A Error</p>
                             <p className="text-xs text-red-600 mt-1">{errorA}</p>
                         </div>
                         <button
@@ -196,7 +196,7 @@ export function ChatInterface({ config, setConfig, activeView, loadedSession }: 
                     <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
                         <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-red-800">模型 B 错误</p>
+                            <p className="text-sm font-medium text-red-800">Model B Error</p>
                             <p className="text-xs text-red-600 mt-1">{errorB}</p>
                         </div>
                         <button
@@ -333,7 +333,7 @@ export function ChatInterface({ config, setConfig, activeView, loadedSession }: 
                     <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
                         <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-red-800">模型 A 错误</p>
+                            <p className="text-sm font-medium text-red-800">Model A Error</p>
                             <p className="text-xs text-red-600 mt-1">{errorA}</p>
                         </div>
                         <button

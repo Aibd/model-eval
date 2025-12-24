@@ -124,7 +124,7 @@ export function SettingsModal({ isOpen, onClose, onSave, initialConfig }: Settin
         if (!newModel.modelId || !newModel.apiKey) {
             setTestResult({
                 success: false,
-                message: '请先填写所有必填字段',
+                message: 'Please fill in all required fields',
             });
             return;
         }
@@ -155,16 +155,16 @@ export function SettingsModal({ isOpen, onClose, onSave, initialConfig }: Settin
             if (data.success) {
                 setTestResult({
                     success: true,
-                    message: data.message || '测试成功！API key 和模型 ID 都有效。',
+                    message: data.message || 'Test successful! API key and Model ID are valid.',
                 });
             } else {
                 // Show detailed error information
-                let errorDetails = data.error || '测试失败';
+                let errorDetails = data.error || 'Test failed';
                 if (data.originalError && data.originalError !== data.error) {
-                    errorDetails += `\n原始错误: ${data.originalError}`;
+                    errorDetails += `\nOriginal error: ${data.originalError}`;
                 }
                 if (data.modelId && data.provider === 'openrouter') {
-                    errorDetails += `\n模型 ID: ${data.modelId}`;
+                    errorDetails += `\nModel ID: ${data.modelId}`;
                 }
                 
                 setTestResult({
@@ -176,8 +176,8 @@ export function SettingsModal({ isOpen, onClose, onSave, initialConfig }: Settin
         } catch (error) {
             setTestResult({
                 success: false,
-                message: '测试时发生错误',
-                error: error instanceof Error ? error.message : '未知错误',
+                message: 'An error occurred during testing',
+                error: error instanceof Error ? error.message : 'Unknown error',
             });
         } finally {
             setIsTesting(false);
@@ -239,7 +239,7 @@ export function SettingsModal({ isOpen, onClose, onSave, initialConfig }: Settin
                                             onClick={handleCancelEdit}
                                             className="text-xs text-slate-500 hover:text-slate-700 transition-colors"
                                         >
-                                            取消编辑
+                                            Cancel Edit
                                         </button>
                                     )}
                                 </div>
@@ -271,7 +271,7 @@ export function SettingsModal({ isOpen, onClose, onSave, initialConfig }: Settin
                                             }}
                                             placeholder={
                                                 newModel.provider === 'openrouter' 
-                                                    ? 'e.g. openai/gpt-4o 或 anthropic/claude-3-opus'
+                                                    ? 'e.g. openai/gpt-4o or anthropic/claude-3-opus'
                                                     : newModel.provider === 'openai'
                                                     ? 'e.g. gpt-4-turbo-preview'
                                                     : newModel.provider === 'anthropic'
@@ -346,12 +346,12 @@ export function SettingsModal({ isOpen, onClose, onSave, initialConfig }: Settin
                                         {isTesting ? (
                                             <>
                                                 <Loader2 className="h-4 w-4 animate-spin" />
-                                                测试中...
+                                                Testing...
                                             </>
                                         ) : (
                                             <>
                                                 <TestTube className="h-4 w-4" />
-                                                测试连接
+                                                Test Connection
                                             </>
                                         )}
                                     </button>

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Sidebar } from '@/components/Sidebar';
 import { ChatInterface } from '@/components/ChatInterface';
 import { CodeCompareInterface } from '@/components/CodeCompareInterface';
-import { Menu, Bot, ChevronDown, ChevronUp, Zap } from 'lucide-react';
+import { Menu, Bot, ChevronDown, ChevronUp, Zap, Code, Eye } from 'lucide-react';
 import { AppConfig, ChatSession } from '@/lib/types';
 
 export default function Home() {
@@ -13,6 +13,10 @@ export default function Home() {
   const [activeView, setActiveView] = useState<'comparison' | string>('comparison');
   const [isModelSelectorOpen, setIsModelSelectorOpen] = useState<'A' | 'B' | null>(null);
   const [loadedSession, setLoadedSession] = useState<ChatSession | null>(null);
+
+  // Global states for Code Compare
+  const [leftMode, setLeftMode] = useState<'code' | 'preview'>('code');
+  const [rightMode, setRightMode] = useState<'code' | 'preview'>('code');
 
   const [config, setConfig] = useState<AppConfig>({
     models: [],
@@ -130,7 +134,7 @@ export default function Home() {
       <div className="flex flex-1 flex-col min-w-0 h-full relative">
         {/* Header */}
         <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white/80 backdrop-blur-sm px-6 sticky top-0 z-10">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 z-10">
             <button
               onClick={toggleSidebar}
               className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-600"
@@ -147,8 +151,8 @@ export default function Home() {
           </div>
 
           { (mode === 'code' || activeView === 'comparison') && (
-            <div className="flex-1 flex justify-center px-8">
-              <div className="flex items-center gap-4">
+            <div className="absolute left-1/2 -translate-x-1/2 flex justify-center px-4 w-auto pointer-events-none">
+              <div className="flex items-center gap-4 pointer-events-auto">
                 {/* Model A Selector */}
                 <div className="relative model-selector">
                   <button
@@ -159,7 +163,7 @@ export default function Home() {
                       <Bot className="h-4 w-4 text-blue-600" />
                     </div>
                     <span className="text-sm font-semibold text-blue-700 truncate">
-                      {config.models?.find(m => m.id === config.comparison.modelAId)?.modelId || '选择模型A'}
+                      {config.models?.find(m => m.id === config.comparison.modelAId)?.modelId || 'Select Model A'}
                     </span>
                     <ChevronDown className="h-4 w-4 text-blue-500" />
                   </button>
@@ -178,7 +182,7 @@ export default function Home() {
                           }`}
                         >
                           <Bot className="h-4 w-4" />
-                          <span className="truncate">{model.name}</span>
+                          <span className="truncate">{model.modelId}</span>
                         </button>
                       ))}
                     </div>
@@ -200,7 +204,7 @@ export default function Home() {
                       <Bot className="h-4 w-4 text-purple-600" />
                     </div>
                     <span className="text-sm font-semibold text-purple-700 truncate">
-                      {config.models?.find(m => m.id === config.comparison.modelBId)?.modelId || '选择模型B'}
+                      {config.models?.find(m => m.id === config.comparison.modelBId)?.modelId || 'Select Model B'}
                     </span>
                     <ChevronDown className="h-4 w-4 text-purple-500" />
                   </button>
@@ -229,7 +233,41 @@ export default function Home() {
             </div>
           )}
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 z-10">
+            {mode === 'code' && (
+              <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200 shadow-inner mx-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLeftMode('code');
+                    setRightMode('code');
+                  }}
+                  className={`flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                    leftMode === 'code' && rightMode === 'code'
+                      ? 'bg-white text-blue-600 shadow-sm scale-[1.02]'
+                      : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
+                  }`}
+                >
+                  <Code className="h-3.5 w-3.5" />
+                  All Code
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLeftMode('preview');
+                    setRightMode('preview');
+                  }}
+                  className={`flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                    leftMode === 'preview' && rightMode === 'preview'
+                      ? 'bg-white text-blue-600 shadow-sm scale-[1.02]'
+                      : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
+                  }`}
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                  All Preview
+                </button>
+              </div>
+            )}
             <button
               type="button"
               onClick={() => setMode('chat')}
@@ -264,7 +302,14 @@ export default function Home() {
               loadedSession={loadedSession}
             />
           ) : (
-            <CodeCompareInterface config={config} setConfig={setConfig} />
+            <CodeCompareInterface 
+              config={config} 
+              setConfig={setConfig}
+              leftMode={leftMode}
+              setLeftMode={setLeftMode}
+              rightMode={rightMode}
+              setRightMode={setRightMode}
+            />
           )}
         </main>
       </div>
