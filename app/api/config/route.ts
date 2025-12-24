@@ -3,7 +3,7 @@ import { AppConfig } from '@/lib/types';
 import { readAppConfig, writeAppConfig } from '@/lib/db';
 
 export async function GET() {
-    const config = await Promise.resolve(readAppConfig());
+    const config = await Promise.resolve(readAppConfig(true));
     return new Response(JSON.stringify(config), {
         status: 200,
         headers: { 'Content-Type': 'application/json' }

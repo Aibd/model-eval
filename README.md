@@ -20,6 +20,36 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Docker Deployment
+
+This project is optimized for Docker deployment using `standalone` output mode.
+
+### Prerequisites
+
+- Docker and Docker Compose installed.
+- An existing Docker network named `proxy-network` (or modify `docker-compose.yml` to match your network).
+
+To create the network if it doesn't exist:
+```bash
+docker network create proxy-network
+```
+
+### Deployment Steps
+
+1. **Build and Start with Docker Compose:**
+   ```bash
+   docker-compose up -d --build
+   ```
+
+2. **Access the Application:**
+   The container runs on port `3000` within the `proxy-network`. If you need to access it directly from your host, uncomment the `ports` section in `docker-compose.yml`.
+
+### Docker Configuration Details
+
+- **Dockerfile**: Uses a multi-stage build (deps, builder, runner) based on `node:20-alpine` for minimal image size.
+- **Next.js Standalone**: Configured in `next.config.ts` to reduce the production image footprint by only including necessary files.
+- **Networking**: Joined to the `proxy-network` by default for production proxy integration (e.g., Nginx, Traefik).
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

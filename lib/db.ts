@@ -69,7 +69,7 @@ if (!hasModels.count) {
     migrateConfigFromJson();
 }
 
-export function readAppConfig(): AppConfig {
+export function readAppConfig(redact = false): AppConfig {
     const rows = db
         .prepare('SELECT id, name, provider, api_key, base_url, model_id FROM models ORDER BY name ASC')
         .all() as {
@@ -90,7 +90,7 @@ export function readAppConfig(): AppConfig {
             id: r.id,
             name: r.name,
             provider: r.provider,
-            apiKey: r.api_key,
+            apiKey: redact ? (r.api_key ? 'REDACTED' : '') : r.api_key,
             baseUrl: r.base_url || undefined,
             modelId: r.model_id,
         })),
@@ -103,16 +103,23 @@ export function readAppConfig(): AppConfig {
 
 export function writeAppConfig(config: AppConfig): void {
     const tx = db.transaction((cfg: AppConfig) => {
+        // Get existing models to preserve API keys if they are redacted in the incoming config
+        const existingModels = db.prepare('SELECT id, api_key FROM models').all() as { id: string; api_key: string }[];
+        const keyMap = new Map(existingModels.map(m => [m.id, m.api_key]));
+
         db.prepare('DELETE FROM models').run();
         const insertModel = db.prepare(
             'INSERT INTO models (id, name, provider, api_key, base_url, model_id) VALUES (@id, @name, @provider, @apiKey, @baseUrl, @modelId)'
         );
         cfg.models.forEach((m) => {
+            // If the incoming key is 'REDACTED', use the existing key from DB
+            const finalApiKey = m.apiKey === 'REDACTED' ? (keyMap.get(m.id) || '') : m.apiKey;
+            
             insertModel.run({
                 id: m.id,
                 name: m.name,
                 provider: m.provider,
-                apiKey: m.apiKey,
+                apiKey: finalApiKey,
                 baseUrl: m.baseUrl ?? null,
                 modelId: m.modelId,
             });

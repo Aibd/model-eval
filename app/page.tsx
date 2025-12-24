@@ -242,14 +242,14 @@ export default function Home() {
                     setLeftMode('code');
                     setRightMode('code');
                   }}
-                  className={`flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                  className={`flex items-center justify-center p-2 rounded-lg transition-all ${
                     leftMode === 'code' && rightMode === 'code'
                       ? 'bg-white text-blue-600 shadow-sm scale-[1.02]'
                       : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
                   }`}
+                  title="All Code"
                 >
-                  <Code className="h-3.5 w-3.5" />
-                  All Code
+                  <Code className="h-4 w-4" />
                 </button>
                 <button
                   type="button"
@@ -257,14 +257,14 @@ export default function Home() {
                     setLeftMode('preview');
                     setRightMode('preview');
                   }}
-                  className={`flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                  className={`flex items-center justify-center p-2 rounded-lg transition-all ${
                     leftMode === 'preview' && rightMode === 'preview'
                       ? 'bg-white text-blue-600 shadow-sm scale-[1.02]'
                       : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
                   }`}
+                  title="All Preview"
                 >
-                  <Eye className="h-3.5 w-3.5" />
-                  All Preview
+                  <Eye className="h-4 w-4" />
                 </button>
               </div>
             )}
