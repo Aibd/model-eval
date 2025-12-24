@@ -22,6 +22,8 @@ export function CodeCompareInterface({ config }: CodeCompareInterfaceProps) {
     const [rightMode, setRightMode] = useState<PanelMode>('code');
     const [leftFullscreen, setLeftFullscreen] = useState(false);
     const [rightFullscreen, setRightFullscreen] = useState(false);
+    const [leftCode, setLeftCode] = useState('');
+    const [rightCode, setRightCode] = useState('');
 
     const getModel = (id: string) => config.models.find(m => m.id === id);
 
@@ -98,20 +100,31 @@ export function CodeCompareInterface({ config }: CodeCompareInterfaceProps) {
     const lastAssistantA = assistantMessagesA[assistantMessagesA.length - 1];
     const lastAssistantB = assistantMessagesB[assistantMessagesB.length - 1];
 
+    const normalizeCodeContent = (content: string | undefined) => {
+        if (!content) return '';
+        const lines = content.split('\n');
+        const filtered = lines.filter(line => {
+            const trimmed = line.trim();
+            return !trimmed.startsWith('```');
+        });
+        return filtered.join('\n').trim();
+    };
+
+    const normalizedContentA = normalizeCodeContent(lastAssistantA?.content as string | undefined);
+    const normalizedContentB = normalizeCodeContent(lastAssistantB?.content as string | undefined);
+
     const isLoading = isLoadingA || isLoadingB;
 
-    const renderCode = (content: string | undefined) => {
-        if (!content) {
-            return (
-                <div className="h-full flex items-center justify-center text-slate-400 text-sm">
-                    暂无代码输出
-                </div>
-            );
-        }
+    const renderCode = (value: string, onChange: (v: string) => void) => {
         return (
-            <pre className="h-full w-full overflow-auto bg-slate-900 text-slate-50 text-xs p-4 rounded-xl">
-                <code>{content}</code>
-            </pre>
+            <div className="h-full w-full overflow-auto bg-slate-900 text-slate-50 text-xs p-0.5 rounded-xl">
+                <textarea
+                    className="h-full w-full resize-none bg-slate-900 text-slate-50 text-xs p-4 rounded-lg font-mono outline-none border-0"
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    placeholder="在这里粘贴或编辑代码..."
+                />
+            </div>
         );
     };
 
@@ -143,6 +156,10 @@ export function CodeCompareInterface({ config }: CodeCompareInterfaceProps) {
         previewContent: string | undefined,
         isLoadingSide: boolean
     ) => {
+        const currentCodeValue = side === 'A'
+            ? (leftCode || normalizedContentA)
+            : (rightCode || normalizedContentB);
+
         const panel = (
             <div className="flex flex-col h-full bg-slate-50">
                 <div className="flex items-center justify-between px-4 py-2 border-b border-slate-200 bg-white">
@@ -205,12 +222,12 @@ export function CodeCompareInterface({ config }: CodeCompareInterfaceProps) {
                                 生成中...
                             </div>
                         )}
-                        {mode === 'code' && codeContent && (
+                        {mode === 'code' && currentCodeValue && (
                             <button
                                 type="button"
                                 onClick={async () => {
                                     try {
-                                        await navigator.clipboard.writeText(codeContent);
+                                        await navigator.clipboard.writeText(currentCodeValue);
                                     } catch (e) {
                                         console.error('Copy failed', e);
                                     }
@@ -223,8 +240,11 @@ export function CodeCompareInterface({ config }: CodeCompareInterfaceProps) {
                         )}
                         <div className="h-full">
                             {mode === 'code'
-                                ? renderCode(codeContent)
-                                : renderPreview(previewContent)}
+                                ? renderCode(
+                                    currentCodeValue,
+                                    side === 'A' ? setLeftCode : setRightCode
+                                )
+                                : renderPreview(currentCodeValue)}
                         </div>
                     </div>
                 </div>
@@ -248,7 +268,7 @@ export function CodeCompareInterface({ config }: CodeCompareInterfaceProps) {
                             <Minimize2 className="h-4 w-4" />
                         </button>
                         <div className="w-full h-full bg-slate-900 p-4">
-                            {renderPreview(previewContent)}
+                            {renderPreview(currentCodeValue)}
                         </div>
                     </div>
                 </div>
@@ -300,8 +320,8 @@ export function CodeCompareInterface({ config }: CodeCompareInterfaceProps) {
                         setLeftMode,
                         leftFullscreen,
                         setLeftFullscreen,
-                        lastAssistantA?.content as string | undefined,
-                        lastAssistantA?.content as string | undefined,
+                        normalizedContentA || undefined,
+                        normalizedContentA || undefined,
                         isLoadingA
                     )}
                 </div>
@@ -313,8 +333,8 @@ export function CodeCompareInterface({ config }: CodeCompareInterfaceProps) {
                         setRightMode,
                         rightFullscreen,
                         setRightFullscreen,
-                        lastAssistantB?.content as string | undefined,
-                        lastAssistantB?.content as string | undefined,
+                        normalizedContentB || undefined,
+                        normalizedContentB || undefined,
                         isLoadingB
                     )}
                 </div>
