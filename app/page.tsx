@@ -5,13 +5,14 @@ import { Sidebar } from '@/components/Sidebar';
 import { ChatInterface } from '@/components/ChatInterface';
 import { CodeCompareInterface } from '@/components/CodeCompareInterface';
 import { Menu, Bot, ChevronDown, ChevronUp, Zap } from 'lucide-react';
-import { AppConfig } from '@/lib/types';
+import { AppConfig, ChatSession } from '@/lib/types';
 
 export default function Home() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [mode, setMode] = useState<'chat' | 'code'>('chat');
   const [activeView, setActiveView] = useState<'comparison' | string>('comparison');
   const [isModelSelectorOpen, setIsModelSelectorOpen] = useState<'A' | 'B' | null>(null);
+  const [loadedSession, setLoadedSession] = useState<ChatSession | null>(null);
 
   const [config, setConfig] = useState<AppConfig>({
     models: [],
@@ -58,7 +59,9 @@ export default function Home() {
     } else {
       newConfig.comparison.modelBId = modelId;
     }
+    setLoadedSession(null);
     setConfig(newConfig);
+    setActiveView('comparison');
     setIsModelSelectorOpen(null);
   };
 
@@ -79,6 +82,39 @@ export default function Home() {
     };
   }, [isModelSelectorOpen]);
 
+  const handleSelectModelFromSidebar = (id: string | null) => {
+    setLoadedSession(null);
+    setActiveView(id || 'comparison');
+    setMode('chat');
+  };
+
+  const handleSelectHistory = async (sessionId: string) => {
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}`);
+      if (!response.ok) {
+        console.error('Failed to load session', response.statusText);
+        return;
+      }
+      const session: ChatSession = await response.json();
+      setLoadedSession(session);
+      if (session.type === 'comparison') {
+        setConfig((prev) => ({
+          ...prev,
+          comparison: {
+            modelAId: session.modelAId,
+            modelBId: session.modelBId || ''
+          }
+        }));
+        setActiveView('comparison');
+      } else {
+        setActiveView(session.modelAId);
+      }
+      setMode('chat');
+    } catch (e) {
+      console.error('Failed to load session', e);
+    }
+  };
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-slate-50">
       <Sidebar
@@ -86,8 +122,9 @@ export default function Home() {
         toggleSidebar={toggleSidebar}
         config={config}
         setConfig={setConfig}
-        onSelectModel={(id) => setActiveView(id || 'comparison')}
+        onSelectModel={handleSelectModelFromSidebar}
         activeView={activeView}
+        onSelectHistory={handleSelectHistory}
       />
 
       <div className="flex flex-1 flex-col min-w-0 h-full relative">
@@ -218,9 +255,14 @@ export default function Home() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-hidden relative">
+        <main className="flex-1 overflow-hidden relative min-h-0">
           {mode === 'chat' ? (
-            <ChatInterface config={config} setConfig={setConfig} activeView={activeView} />
+            <ChatInterface
+              config={config}
+              setConfig={setConfig}
+              activeView={activeView}
+              loadedSession={loadedSession}
+            />
           ) : (
             <CodeCompareInterface config={config} setConfig={setConfig} />
           )}

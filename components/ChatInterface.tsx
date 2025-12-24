@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useChat } from 'ai/react';
 import { ModelColumn } from './ModelColumn';
 import { InputArea } from './InputArea';
-import { AppConfig, ModelConfig } from '@/lib/types';
+import { AppConfig, ModelConfig, ChatSession } from '@/lib/types';
 import { AlertCircle, X, User, Bot } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -11,12 +11,17 @@ interface ChatInterfaceProps {
     config: AppConfig;
     setConfig: (config: AppConfig) => void;
     activeView: 'comparison' | string;
+    loadedSession?: ChatSession | null;
 }
 
-export function ChatInterface({ config, setConfig, activeView }: ChatInterfaceProps) {
+export function ChatInterface({ config, setConfig, activeView, loadedSession }: ChatInterfaceProps) {
     const [errorA, setErrorA] = useState<string | null>(null);
     const [errorB, setErrorB] = useState<string | null>(null);
     const [enableWebSearch, setEnableWebSearch] = useState(true); // Default to enabled
+    const [sessionSeed] = useState(() => ({
+        id: crypto.randomUUID(),
+        createdAt: Date.now(),
+    }));
 
 
     // Helper to get model config by ID
@@ -89,6 +94,12 @@ export function ChatInterface({ config, setConfig, activeView }: ChatInterfacePr
         },
     });
 
+    useEffect(() => {
+        if (!loadedSession) return;
+        setMessagesA(loadedSession.messagesA || []);
+        setMessagesB(loadedSession.type === 'comparison' ? loadedSession.messagesB || [] : []);
+    }, [loadedSession, setMessagesA, setMessagesB]);
+
     const handleSend = async (message: string, file?: File) => {
         const contextMessage = file
             ? `${message}\n\n[Attached File: ${file.name}]`
@@ -107,6 +118,42 @@ export function ChatInterface({ config, setConfig, activeView }: ChatInterfacePr
     };
 
     const isLoading = isLoadingA || isLoadingB;
+    const sessionId = loadedSession?.id || sessionSeed.id;
+    const createdAt = loadedSession?.createdAt || sessionSeed.createdAt;
+
+    useEffect(() => {
+        if (isLoading) return;
+        if (!sessionId) return;
+        if (messagesA.length === 0 && messagesB.length === 0) return;
+
+        const firstUser = messagesA.find(m => m.role === 'user') || messagesB.find(m => m.role === 'user');
+        const rawTitle = firstUser?.content || '';
+        const title =
+            rawTitle.length > 60
+                ? rawTitle.slice(0, 60) + '...'
+                : rawTitle || (activeView === 'comparison' ? 'Model comparison' : 'Chat session');
+
+        const session: ChatSession = {
+            id: sessionId,
+            title,
+            createdAt,
+            type: activeView === 'comparison' ? 'comparison' : 'single',
+            modelAId: activeView === 'comparison' ? config.comparison.modelAId : modelAConfig?.id || '',
+            modelBId: activeView === 'comparison' ? config.comparison.modelBId || undefined : undefined,
+            messagesA: messagesA,
+            messagesB: activeView === 'comparison' ? messagesB : [],
+        };
+
+        fetch('/api/sessions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(session),
+        })
+            .then(() => {
+                window.dispatchEvent(new Event('storage-sessions'));
+            })
+            .catch(() => {});
+    }, [isLoading, messagesA, messagesB, activeView, sessionId, createdAt, config.comparison.modelAId, config.comparison.modelBId, modelAConfig?.id]);
 
     if (!modelAConfig && activeView !== 'comparison') {
         return <div className="flex items-center justify-center h-full text-slate-500">Model not found</div>;
@@ -128,40 +175,39 @@ export function ChatInterface({ config, setConfig, activeView }: ChatInterfacePr
 
 
     const content = activeView === 'comparison' ? (
-        <>
-            {/* Comparison View: Single scrollable interface with user messages in center, model responses below */}
-            <div className="flex-1 overflow-y-auto pb-32">
-            {errorA && (
-                <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
-                    <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-                    <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-red-800">模型 A 错误</p>
-                        <p className="text-xs text-red-600 mt-1">{errorA}</p>
-                    </div>
-                    <button
-                        onClick={() => setErrorA(null)}
-                        className="text-red-400 hover:text-red-600 transition-colors"
-                    >
-                        <X className="h-4 w-4" />
-                    </button>
-                </div>
-            )}
-            {errorB && (
-                <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
-                    <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-                    <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-red-800">模型 B 错误</p>
-                        <p className="text-xs text-red-600 mt-1">{errorB}</p>
-                    </div>
-                    <button
-                        onClick={() => setErrorB(null)}
-                        className="text-red-400 hover:text-red-600 transition-colors"
-                    >
-                        <X className="h-4 w-4" />
-                    </button>
+        <div className="flex-1 min-h-0 overflow-hidden">
+            <div className="h-full overflow-y-auto pb-32">
+                {errorA && (
+                    <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+                        <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-red-800">模型 A 错误</p>
+                            <p className="text-xs text-red-600 mt-1">{errorA}</p>
+                        </div>
+                        <button
+                            onClick={() => setErrorA(null)}
+                            className="text-red-400 hover:text-red-600 transition-colors"
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
                     </div>
                 )}
-                
+                {errorB && (
+                    <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+                        <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-red-800">模型 B 错误</p>
+                            <p className="text-xs text-red-600 mt-1">{errorB}</p>
+                        </div>
+                        <button
+                            onClick={() => setErrorB(null)}
+                            className="text-red-400 hover:text-red-600 transition-colors"
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
+                    </div>
+                )}
+
                 <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
                     {userMessages.length === 0 && messagesA.length === 0 && (
                         <div className="h-full flex flex-col items-center justify-center text-slate-400 py-20">
@@ -172,15 +218,13 @@ export function ChatInterface({ config, setConfig, activeView }: ChatInterfacePr
                         </div>
                     )}
 
-                    {/* Render conversation pairs: User message + Model responses */}
                     {userMessages.map((userMsg, index) => {
                         const assistantMsgA = assistantMessagesA[index];
                         const assistantMsgB = assistantMessagesB[index];
                         const isLastPair = index === userMessages.length - 1;
-                        
+
                         return (
                             <div key={userMsg.id} className="space-y-6">
-                                {/* User Message - Right Aligned, No Icon */}
                                 <div className="flex justify-end">
                                     <div className="max-w-2xl w-full animate-in slide-in-from-bottom-2 duration-300">
                                         <div className="bg-slate-800 text-white rounded-2xl rounded-tr-none px-5 py-3.5 text-sm leading-relaxed shadow-sm">
@@ -193,9 +237,7 @@ export function ChatInterface({ config, setConfig, activeView }: ChatInterfacePr
                                     </div>
                                 </div>
 
-                                {/* Model Responses - Side by Side */}
                                 <div className="grid grid-cols-2 gap-4">
-                                    {/* Model A Response */}
                                     <div className="space-y-4">
                                         {assistantMsgA ? (
                                             <div className="flex gap-4 animate-in slide-in-from-bottom-2 duration-300">
@@ -236,7 +278,6 @@ export function ChatInterface({ config, setConfig, activeView }: ChatInterfacePr
                                         ) : null}
                                     </div>
 
-                                    {/* Model B Response */}
                                     <div className="space-y-4">
                                         {assistantMsgB ? (
                                             <div className="flex gap-4 animate-in slide-in-from-bottom-2 duration-300">
@@ -282,11 +323,12 @@ export function ChatInterface({ config, setConfig, activeView }: ChatInterfacePr
                     })}
                 </div>
             </div>
-        </>
+        </div>
     ) : (
         // Single Model View: Normal layout
-        <div className="flex-1 flex overflow-hidden pb-32">
-            <div className="flex-1 min-w-0 flex flex-col">
+        <div className="flex-1 min-h-0 overflow-hidden">
+            <div className="h-full flex">
+                <div className="flex-1 min-w-0 flex flex-col">
                 {errorA && (
                     <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
                         <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
@@ -302,25 +344,26 @@ export function ChatInterface({ config, setConfig, activeView }: ChatInterfacePr
                         </button>
                     </div>
                 )}
-                <div className="flex-1 min-w-0">
-                    <ModelColumn
-                        modelName={modelAConfig?.modelId || 'Select a Model'}
-                        messages={messagesA}
-                        isLoading={isLoadingA}
-                        color="blue"
-                        isComparison={false}
-                        side="A"
-                        config={config}
-                        setConfig={setConfig}
-                        modelId={modelAConfig?.modelId}
-                    />
+                    <div className="flex-1 min-w-0 min-h-0">
+                        <ModelColumn
+                            modelName={modelAConfig?.modelId || 'Select a Model'}
+                            messages={messagesA}
+                            isLoading={isLoadingA}
+                            color="blue"
+                            isComparison={false}
+                            side="A"
+                            config={config}
+                            setConfig={setConfig}
+                            modelId={modelAConfig?.modelId}
+                        />
+                    </div>
                 </div>
             </div>
         </div>
     );
 
     return (
-        <div className="flex flex-col h-full bg-slate-50 relative">
+        <div className="flex flex-col h-full min-h-0 bg-slate-50 relative overflow-hidden">
             {content}
 
             <InputArea 

@@ -11,9 +11,10 @@ interface SidebarProps {
     setConfig: (config: AppConfig) => void;
     onSelectModel: (modelId: string | null) => void; // null for comparison view
     activeView: 'comparison' | string; // 'comparison' or modelId
+    onSelectHistory: (sessionId: string) => void;
 }
 
-export function Sidebar({ isOpen, toggleSidebar, config, setConfig, onSelectModel, activeView }: SidebarProps) {
+export function Sidebar({ isOpen, toggleSidebar, config, setConfig, onSelectModel, activeView, onSelectHistory }: SidebarProps) {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
     const handleSaveConfig = (newConfig: AppConfig) => {
@@ -28,14 +29,21 @@ export function Sidebar({ isOpen, toggleSidebar, config, setConfig, onSelectMode
     const [history, setHistory] = useState<{ id: string; title: string; createdAt: number; type: string }[]>([]);
 
     useEffect(() => {
-        const loadHistory = () => {
-            const sessions = JSON.parse(localStorage.getItem('chat_sessions') || '[]');
-            setHistory(sessions);
+        const loadHistory = async () => {
+            try {
+                const res = await fetch('/api/sessions');
+                if (!res.ok) return;
+                const items: { id: string; title: string; createdAt: number; type: string }[] = await res.json();
+                setHistory(items);
+            } catch {
+            }
         };
 
         loadHistory();
 
-        const handleStorageChange = () => loadHistory();
+        const handleStorageChange = () => {
+            loadHistory();
+        };
         window.addEventListener('storage-sessions', handleStorageChange);
 
         return () => window.removeEventListener('storage-sessions', handleStorageChange);
@@ -132,7 +140,7 @@ export function Sidebar({ isOpen, toggleSidebar, config, setConfig, onSelectMode
                                     {history.map((item) => (
                                         <button
                                             key={item.id}
-                                            // TODO: Implement loading history
+                                            onClick={() => onSelectHistory(item.id)}
                                             className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-400 hover:bg-slate-800/50 hover:text-white transition-all group"
                                         >
                                             <MessageSquare className="h-4 w-4 text-slate-600 group-hover:text-blue-400 transition-colors" />

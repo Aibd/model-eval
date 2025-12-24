@@ -1,10 +1,9 @@
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
-import { promises as fs } from 'fs';
-import path from 'path';
-import { AppConfig, ModelConfig } from '@/lib/types';
+import { ModelConfig } from '@/lib/types';
+import { findModelById } from '@/lib/db';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 // Error type definitions
 interface APIError {
@@ -29,14 +28,7 @@ export async function POST(req: Request) {
 
         let resolvedModelConfig: ModelConfig | null = null;
         if (modelConfig && modelConfig.id) {
-            try {
-                const configPath = path.join(process.cwd(), 'config', 'models.json');
-                const data = await fs.readFile(configPath, 'utf-8');
-                const storedConfig = JSON.parse(data) as AppConfig;
-                resolvedModelConfig = storedConfig.models.find(m => m.id === modelConfig.id) || null;
-            } catch {
-                resolvedModelConfig = null;
-            }
+            resolvedModelConfig = findModelById(modelConfig.id);
         }
 
         const effectiveConfig = resolvedModelConfig || modelConfig;

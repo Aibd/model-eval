@@ -291,7 +291,7 @@ export function CodeCompareInterface({ config }: CodeCompareInterfaceProps) {
                 </div>
             )}
 
-            <div className="flex-1 flex overflow-hidden pb-32 mt-2">
+            <div className="flex-1 flex overflow-y-auto pb-32 mt-2">
                 <div className="flex-1 min-w-0 flex flex-col border-r border-slate-200">
                     {renderPanel(
                         'A',
