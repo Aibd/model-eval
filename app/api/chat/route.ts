@@ -12,10 +12,7 @@ import { authOptions } from '@/lib/auth';
 export async function POST(req: Request) {
     try {
         const session = await getServerSession(authOptions);
-        if (!session?.user) {
-            return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
-        }
-        const userId = (session.user as any).id || session.user.email || 'default';
+        const userId = session?.user ? ((session.user as any).id || session.user.email) : 'anonymous';
         const { messages, modelConfig, enableWebSearch } = await req.json();
 
         let resolvedModelConfig: ModelConfig | null = null;
@@ -85,16 +82,16 @@ export async function POST(req: Request) {
             // Note: We don't strictly validate model ID format here
             // Some models might work without the provider prefix or with different formats
             // Let OpenRouter API decide if the model is valid (like Cherry Studio does)
-            
+
             // Get the origin from the request for OpenRouter headers
             // OpenRouter requires HTTP-Referer header (note: it's HTTP-Referer, not Referer)
             const origin = req.headers.get('origin') || req.headers.get('referer') || 'http://localhost:3000';
             // Extract base URL from origin if it's a full URL
             const refererUrl = origin.startsWith('http') ? origin : `http://${origin}`;
-            
+
             // Try to get a more specific referer if available
             const referer = req.headers.get('referer') || refererUrl;
-            
+
             const openai = new OpenAI({
                 apiKey: apiKey,
                 baseURL: baseUrl || 'https://openrouter.ai/api/v1',
@@ -105,7 +102,7 @@ export async function POST(req: Request) {
                     'Content-Type': 'application/json',
                 },
             });
-            
+
             // Prepare request options
             const requestOptions: {
                 model: string;
@@ -150,7 +147,7 @@ export async function POST(req: Request) {
                 // Check if this is a "native web search not supported" error
                 const isNativeNotSupported = searchError?.status === 404 &&
                     (searchError?.message?.includes('native web search') ||
-                     searchError?.message?.includes('No endpoints found that support native web search'));
+                        searchError?.message?.includes('No endpoints found that support native web search'));
 
                 if (enableWebSearch && isNativeNotSupported) {
                     console.log(`Model ${modelId} doesn't support native web search, retrying with Exa engine...`);
@@ -231,35 +228,35 @@ export async function POST(req: Request) {
         return new StreamingTextResponse(stream);
     } catch (error) {
         console.error('API Error:', error);
-        
+
         // 处理 API key 错误
         if (error?.status === 401 || error?.code === 'invalid_api_key') {
             const errorMessage = error?.error?.message || error?.message || 'Invalid API key';
             return new Response(
-                JSON.stringify({ 
-                    error: 'Authentication Error', 
+                JSON.stringify({
+                    error: 'Authentication Error',
                     message: errorMessage,
                     code: 'invalid_api_key',
                     hint: 'Please check your API key in the settings. Make sure it is correct and has not expired.'
-                }), 
-                { 
+                }),
+                {
                     status: 401,
                     headers: { 'Content-Type': 'application/json' }
                 }
             );
         }
-        
+
         // 处理其他错误
         const statusCode = error?.status || 500;
         const errorMessage = error?.error?.message || error?.message || 'Internal Server Error';
-        
+
         return new Response(
-            JSON.stringify({ 
-                error: 'API Error', 
+            JSON.stringify({
+                error: 'API Error',
                 message: errorMessage,
                 details: error?.error || error
-            }), 
-            { 
+            }),
+            {
                 status: statusCode,
                 headers: { 'Content-Type': 'application/json' }
             }

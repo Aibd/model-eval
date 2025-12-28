@@ -14,12 +14,12 @@ export default function Home() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login');
-    }
-  }, [status, router]);
+
+  // useEffect(() => {
+  //   if (status === 'unauthenticated') {
+  //     router.push('/login');
+  //   }
+  // }, [status, router]);
 
   const [mode, setMode] = useState<'chat' | 'code'>('chat');
   const [activeView, setActiveView] = useState<'comparison' | string>('comparison');
@@ -131,7 +131,7 @@ export default function Home() {
     }
   };
 
-  if (status === 'loading' || status === 'unauthenticated') {
+  if (status === 'loading') {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-slate-50">
         <div className="flex flex-col items-center gap-4">
@@ -173,7 +173,7 @@ export default function Home() {
             </h1>
           </div>
 
-          { (mode === 'code' || activeView === 'comparison') && (
+          {(mode === 'code' || activeView === 'comparison') && (
             <div className="absolute left-1/2 -translate-x-1/2 flex justify-center px-4 w-auto pointer-events-none">
               <div className="flex items-center gap-4 pointer-events-auto">
                 {/* Model A Selector */}
@@ -198,11 +198,10 @@ export default function Home() {
                         <button
                           key={model.id}
                           onClick={() => handleModelSelect('A', model.id)}
-                          className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-all ${
-                            config.comparison.modelAId === model.id
-                              ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-500'
-                              : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
-                          }`}
+                          className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-all ${config.comparison.modelAId === model.id
+                            ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-500'
+                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
+                            }`}
                         >
                           <Bot className="h-4 w-4" />
                           <span className="truncate">{model.modelId}</span>
@@ -239,11 +238,10 @@ export default function Home() {
                         <button
                           key={model.id}
                           onClick={() => handleModelSelect('B', model.id)}
-                          className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-all ${
-                            config.comparison.modelBId === model.id
-                              ? 'bg-purple-50 text-purple-700 border-l-4 border-purple-500'
-                              : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
-                          }`}
+                          className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-all ${config.comparison.modelBId === model.id
+                            ? 'bg-purple-50 text-purple-700 border-l-4 border-purple-500'
+                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
+                            }`}
                         >
                           <Bot className="h-4 w-4" />
                           <span className="truncate">{model.modelId}</span>
@@ -265,11 +263,10 @@ export default function Home() {
                     setLeftMode('code');
                     setRightMode('code');
                   }}
-                  className={`flex items-center justify-center p-2 rounded-lg transition-all ${
-                    leftMode === 'code' && rightMode === 'code'
-                      ? 'bg-white text-blue-600 shadow-sm scale-[1.02]'
-                      : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
-                  }`}
+                  className={`flex items-center justify-center p-2 rounded-lg transition-all ${leftMode === 'code' && rightMode === 'code'
+                    ? 'bg-white text-blue-600 shadow-sm scale-[1.02]'
+                    : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
+                    }`}
                   title="All Code"
                 >
                   <Code className="h-4 w-4" />
@@ -280,11 +277,10 @@ export default function Home() {
                     setLeftMode('preview');
                     setRightMode('preview');
                   }}
-                  className={`flex items-center justify-center p-2 rounded-lg transition-all ${
-                    leftMode === 'preview' && rightMode === 'preview'
-                      ? 'bg-white text-blue-600 shadow-sm scale-[1.02]'
-                      : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
-                  }`}
+                  className={`flex items-center justify-center p-2 rounded-lg transition-all ${leftMode === 'preview' && rightMode === 'preview'
+                    ? 'bg-white text-blue-600 shadow-sm scale-[1.02]'
+                    : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
+                    }`}
                   title="All Preview"
                 >
                   <Eye className="h-4 w-4" />
@@ -294,22 +290,20 @@ export default function Home() {
             <button
               type="button"
               onClick={() => setMode('chat')}
-              className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
-                mode === 'chat'
-                  ? 'bg-slate-900 text-white border-slate-900'
-                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-              }`}
+              className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${mode === 'chat'
+                ? 'bg-slate-900 text-white border-slate-900'
+                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                }`}
             >
               Chat Compare
             </button>
             <button
               type="button"
               onClick={() => setMode('code')}
-              className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
-                mode === 'code'
-                  ? 'bg-slate-900 text-white border-slate-900'
-                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-              }`}
+              className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${mode === 'code'
+                ? 'bg-slate-900 text-white border-slate-900'
+                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                }`}
             >
               Code Compare
             </button>
@@ -325,8 +319,8 @@ export default function Home() {
               loadedSession={loadedSession}
             />
           ) : (
-            <CodeCompareInterface 
-              config={config} 
+            <CodeCompareInterface
+              config={config}
               setConfig={setConfig}
               leftMode={leftMode}
               setLeftMode={setLeftMode}

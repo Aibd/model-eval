@@ -10,10 +10,13 @@ import { authOptions } from '@/lib/auth';
 export async function GET() {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
-        return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+        return new Response(JSON.stringify([]), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+        });
     }
     const userId = (session.user as any).id || session.user.email || 'default';
-        const items = await Promise.resolve(listChatSessions(userId));
+    const items = await Promise.resolve(listChatSessions(userId));
     return new Response(JSON.stringify(items), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },

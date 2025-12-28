@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useSession, signOut } from 'next-auth/react';
-import { MessageSquare, Plus, Settings, ScrollText, Bot, User, LogOut } from 'lucide-react';
+import { useSession, signOut, signIn } from 'next-auth/react';
+import { MessageSquare, Plus, Settings, ScrollText, Bot, User, LogOut, LogIn } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SettingsModal } from './SettingsModal';
 import { AppConfig } from '@/lib/types';
@@ -25,7 +25,7 @@ export function Sidebar({ isOpen, toggleSidebar, config, setConfig, onSelectMode
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(newConfig)
-        }).catch(() => {});
+        }).catch(() => { });
     };
 
     const [history, setHistory] = useState<{ id: string; title: string; createdAt: number; type: string }[]>([]);
@@ -159,26 +159,38 @@ export function Sidebar({ isOpen, toggleSidebar, config, setConfig, onSelectMode
 
                     {/* User Profile Section */}
                     <div className="p-4 border-t border-slate-800/50 bg-slate-900/50">
-                        <div className="flex items-center gap-3 px-2 py-2">
-                            {session?.user?.image ? (
-                                <img src={session.user.image} alt="" className="h-8 w-8 rounded-full border border-slate-700" />
-                            ) : (
-                                <div className="h-8 w-8 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700">
-                                    <User className="h-4 w-4 text-slate-400" />
+                        {session ? (
+                            <div className="flex items-center gap-3 px-2 py-2">
+                                {session.user?.image ? (
+                                    <img src={session.user.image} alt="" className="h-8 w-8 rounded-full border border-slate-700" />
+                                ) : (
+                                    <div className="h-8 w-8 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700">
+                                        <User className="h-4 w-4 text-slate-400" />
+                                    </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-white truncate">{session.user?.name || 'User'}</p>
+                                    <p className="text-xs text-slate-500 truncate">{session.user?.email}</p>
                                 </div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-white truncate">{session?.user?.name || 'User'}</p>
-                                <p className="text-xs text-slate-500 truncate">{session?.user?.email}</p>
+                                <button
+                                    onClick={() => signOut()}
+                                    className="p-2 hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-red-400"
+                                    title="Sign Out"
+                                >
+                                    <LogOut className="h-4 w-4" />
+                                </button>
                             </div>
+                        ) : (
                             <button
-                                onClick={() => signOut()}
-                                className="p-2 hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-red-400"
-                                title="Sign Out"
+                                onClick={() => signIn('google', { callbackUrl: '/' })}
+                                className="flex w-full items-center gap-3 px-4 py-2.5 rounded-xl bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 transition-all border border-blue-600/20 hover:border-blue-600/40 group"
                             >
-                                <LogOut className="h-4 w-4" />
+                                <div className="h-8 w-8 rounded-full bg-blue-600/20 flex items-center justify-center border border-blue-600/30 group-hover:scale-110 transition-transform">
+                                    <LogIn className="h-4 w-4 text-blue-400" />
+                                </div>
+                                <span className="text-sm font-semibold">Sign In with Google</span>
                             </button>
-                        </div>
+                        )}
                     </div>
                 </div>
             </div>
